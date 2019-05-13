@@ -1,15 +1,18 @@
 /**
- * x2s.c - Convert XML to SML and back
+ * sml2.c - Convert XML to SML and back
  *
  * Test libxml2 SML parsing and saving ability.
- * Run (x2s -?) to display a help screen.
+ * Run (sml2 -?) to display a help screen.
  *
  * See Copyright for the status of this software.
  *
  * jf.larvoire@free.fr
+ *
+ * History
+ *  2019-05-13 JFL Added options -pH and -ph.
  */
 
-#define VERSION "2018-12-04"
+#define VERSION "2019-05-13"
 
 #include <stdio.h>
 #include <string.h>
@@ -58,6 +61,8 @@ DEBUG_CODE("\
   -pB       Parse removing blank nodes\n\
   -pe       Parse reporting errors\n\
   -pE       Parse ignoring errors (Default)\n\
+  -ph       Parse using the huge file option\n\
+  -pH       Parse without using the huge file option (Default)\n\
   -pn       Parse keeping entity nodes (i.e. not expanding entities) (Default)\n\
   -pN       Parse removing entity nodes (i.e. expanding entities)\n\
   -pw       Parse reporting warnings\n\
@@ -164,6 +169,14 @@ int main(int argc, char *argv[]) {
       }
       if (!strcmp(opt, "pE")) {
       	iParseOpts |= XML_PARSE_NOERROR;
+      	continue;
+      }
+      if (!strcmp(opt, "pH")) {
+      	iParseOpts &= ~XML_PARSE_HUGE;
+      	continue;
+      }
+      if (!strcmp(opt, "ph")) {
+      	iParseOpts |= XML_PARSE_HUGE;
       	continue;
       }
       if (!strcmp(opt, "pn")) {
