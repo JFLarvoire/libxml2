@@ -1,5 +1,5 @@
 /*
- * xmlsave.c: Implemetation of the document serializer
+ * xmlsave.c: Implementation of the document serializer
  *
  * See Copyright for the status of this software.
  *
@@ -86,7 +86,6 @@ struct _xmlSaveCtxt {
     const xmlChar *encoding;
     xmlCharEncodingHandlerPtr handler;
     xmlOutputBufferPtr buf;
-    xmlDocPtr doc;
     int options;
     int level;
     int format;
@@ -673,7 +672,7 @@ xmlSaveCtxtInit(xmlSaveCtxtPtr ctxt)
 /**
  * xmlFreeSaveCtxt:
  *
- * Free a saving context, destroying the ouptut in any remaining buffer
+ * Free a saving context, destroying the output in any remaining buffer
  */
 static void
 xmlFreeSaveCtxt(xmlSaveCtxtPtr ctxt)
@@ -1124,7 +1123,6 @@ static void
 xmlDtdDumpOutput(xmlSaveCtxtPtr ctxt, xmlDtdPtr dtd) {
     xmlOutputBufferPtr buf;
     int format, level;
-    xmlDocPtr doc;
 
     DEBUG_ENTER(("xmlDtdDumpOutput(%p, %p);", ctxt, dtd));
     if (dtd == NULL) RETURN();
@@ -1171,14 +1169,11 @@ xmlDtdDumpOutput(xmlSaveCtxtPtr ctxt, xmlDtdPtr dtd) {
     }
     format = ctxt->format;
     level = ctxt->level;
-    doc = ctxt->doc;
     ctxt->format = 0;
     ctxt->level = -1;
-    ctxt->doc = dtd->doc;
     xmlNodeListDumpOutput(ctxt, dtd->children);
     ctxt->format = format;
     ctxt->level = level;
-    ctxt->doc = doc;
     if (!(ctxt->options & XML_SAVE_AS_SML)) {	/* XML */
 	xmlOutputBufferWrite(buf, 2, "]>");
     } else {					/* SML */
@@ -1686,9 +1681,6 @@ xmlDocContentDumpOutput(xmlSaveCtxtPtr ctxt, xmlDocPtr cur) {
         cur->encoding = BAD_CAST ctxt->encoding;
     } else if (cur->encoding != NULL) {
 	encoding = cur->encoding;
-    } else if (cur->charset != XML_CHAR_ENCODING_UTF8) {
-	encoding = (const xmlChar *)
-		     xmlGetCharEncodingName((xmlCharEncoding) cur->charset);
     }
 
     if (((cur->type == XML_HTML_DOCUMENT_NODE) &&
@@ -2381,6 +2373,7 @@ xmlSaveToFd(int fd, const char *encoding, int options)
     if (ret == NULL) return(NULL);
     ret->buf = xmlOutputBufferCreateFd(fd, ret->handler);
     if (ret->buf == NULL) {
+        xmlCharEncCloseFunc(ret->handler);
 	xmlFreeSaveCtxt(ret);
 	return(NULL);
     }
@@ -2412,6 +2405,7 @@ xmlSaveToFilename(const char *filename, const char *encoding, int options)
     ret->buf = xmlOutputBufferCreateFilename(filename, ret->handler,
                                              compression);
     if (ret->buf == NULL) {
+        xmlCharEncCloseFunc(ret->handler);
 	xmlFreeSaveCtxt(ret);
 	RETURN_PTR(NULL);
     }
@@ -2434,28 +2428,15 @@ xmlSaveCtxtPtr
 xmlSaveToBuffer(xmlBufferPtr buffer, const char *encoding, int options)
 {
     xmlSaveCtxtPtr ret;
-    xmlOutputBufferPtr out_buff;
-    xmlCharEncodingHandlerPtr handler;
 
     ret = xmlNewSaveCtxt(encoding, options);
     if (ret == NULL) return(NULL);
-
-    if (encoding != NULL) {
-        handler = xmlFindCharEncodingHandler(encoding);
-        if (handler == NULL) {
-            xmlFree(ret);
-            return(NULL);
-        }
-    } else
-        handler = NULL;
-    out_buff = xmlOutputBufferCreateBuffer(buffer, handler);
-    if (out_buff == NULL) {
-        xmlFree(ret);
-        if (handler) xmlCharEncCloseFunc(handler);
-        return(NULL);
+    ret->buf = xmlOutputBufferCreateBuffer(buffer, ret->handler);
+    if (ret->buf == NULL) {
+        xmlCharEncCloseFunc(ret->handler);
+	xmlFreeSaveCtxt(ret);
+	return(NULL);
     }
-
-    ret->buf = out_buff;
     return(ret);
 }
 
@@ -2483,6 +2464,7 @@ xmlSaveToIO(xmlOutputWriteCallback iowrite,
     if (ret == NULL) return(NULL);
     ret->buf = xmlOutputBufferCreateIO(iowrite, ioclose, ioctx, ret->handler);
     if (ret->buf == NULL) {
+        xmlCharEncCloseFunc(ret->handler);
 	xmlFreeSaveCtxt(ret);
 	return(NULL);
     }
@@ -2769,9 +2751,9 @@ xmlAttrSerializeTxtContent(xmlBufferPtr buf, xmlDocPtr doc,
  *
  * Dump an XML node, recursive behaviour,children are printed too.
  * Note that @format = 1 provide node indenting only if xmlIndentTreeOutput = 1
- * or xmlKeepBlanksDefault(0) was called
+ * or xmlKeepBlanksDefault(0) was called.
  * Since this is using xmlBuffer structures it is limited to 2GB and somehow
- * deprecated, use xmlBufNodeDump() instead.
+ * deprecated, use xmlNodeDumpOutput() instead.
  *
  * Returns the number of bytes written to the buffer or -1 in case of error
  */
@@ -2780,7 +2762,7 @@ xmlNodeDump(xmlBufferPtr buf, xmlDocPtr doc, xmlNodePtr cur, int level,
             int format)
 {
     xmlBufPtr buffer;
-    int ret;
+    size_t ret;
 
     if ((buf == NULL) || (cur == NULL))
         return(-1);
@@ -2938,7 +2920,6 @@ xmlNodeDumpOutput(xmlOutputBufferPtr buf, xmlDocPtr doc, xmlNodePtr cur,
         encoding = "UTF-8";
 
     memset(&ctxt, 0, sizeof(ctxt));
-    ctxt.doc = doc;
     ctxt.buf = buf;
     ctxt.level = level;
     ctxt.format = format ? 1 : 0;
@@ -3024,7 +3005,6 @@ xmlDocDumpFormatMemoryEnc(xmlDocPtr out_doc, xmlChar **doc_txt_ptr,
     }
 
     memset(&ctxt, 0, sizeof(ctxt));
-    ctxt.doc = out_doc;
     ctxt.buf = out_buff;
     ctxt.level = 0;
     ctxt.format = format ? 1 : 0;
@@ -3143,7 +3123,6 @@ xmlDocFormatDump(FILE *f, xmlDocPtr cur, int format) {
     buf = xmlOutputBufferCreateFile(f, handler);
     if (buf == NULL) return(-1);
     memset(&ctxt, 0, sizeof(ctxt));
-    ctxt.doc = cur;
     ctxt.buf = buf;
     ctxt.level = 0;
     ctxt.format = format ? 1 : 0;
@@ -3174,7 +3153,7 @@ xmlDocDump(FILE *f, xmlDocPtr cur) {
  * xmlSaveFileTo:
  * @buf:  an output I/O buffer
  * @cur:  the document
- * @encoding:  the encoding if any assuming the I/O layer handles the trancoding
+ * @encoding:  the encoding if any assuming the I/O layer handles the transcoding
  *
  * Dump an XML document to an I/O buffer.
  * Warning ! This call xmlOutputBufferClose() on buf which is not available
@@ -3193,7 +3172,6 @@ xmlSaveFileTo(xmlOutputBufferPtr buf, xmlDocPtr cur, const char *encoding) {
 	return(-1);
     }
     memset(&ctxt, 0, sizeof(ctxt));
-    ctxt.doc = cur;
     ctxt.buf = buf;
     ctxt.level = 0;
     ctxt.format = 0;
@@ -3209,7 +3187,7 @@ xmlSaveFileTo(xmlOutputBufferPtr buf, xmlDocPtr cur, const char *encoding) {
  * xmlSaveFormatFileTo:
  * @buf:  an output I/O buffer
  * @cur:  the document
- * @encoding:  the encoding if any assuming the I/O layer handles the trancoding
+ * @encoding:  the encoding if any assuming the I/O layer handles the transcoding
  * @format: should formatting spaces been added
  *
  * Dump an XML document to an I/O buffer.
@@ -3233,7 +3211,6 @@ xmlSaveFormatFileTo(xmlOutputBufferPtr buf, xmlDocPtr cur,
 	return(-1);
     }
     memset(&ctxt, 0, sizeof(ctxt));
-    ctxt.doc = cur;
     ctxt.buf = buf;
     ctxt.level = 0;
     ctxt.format = format ? 1 : 0;
@@ -3290,7 +3267,6 @@ xmlSaveFormatFileEnc( const char * filename, xmlDocPtr cur,
     buf = xmlOutputBufferCreateFilename(filename, handler, cur->compression);
     if (buf == NULL) RETURN_INT(-1);
     memset(&ctxt, 0, sizeof(ctxt));
-    ctxt.doc = cur;
     ctxt.buf = buf;
     ctxt.level = 0;
     ctxt.format = format ? 1 : 0;
