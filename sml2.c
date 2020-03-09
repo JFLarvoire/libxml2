@@ -10,9 +10,11 @@
  *
  * History
  *  2019-05-13 JFL Added options -pH and -ph.
+ *  2020-03-09 JFL Pass head spaces through unchanged.
+ *		   Fixed the parsing of the - special arguments.
  */
 
-#define VERSION "2019-05-13"
+#define VERSION "2020-03-09"
 
 #include <stdio.h>
 #include <string.h>
@@ -94,6 +96,9 @@ int main(int argc, char *argv[]) {
   xmlSaveCtxtPtr ctxt;
   int iDeleteBlankNodes = 0;
   int iTrimSpaces = 0;
+  FILE *hIn, *hOut;
+  char *pszHeadSpaces = malloc(1);
+  int nHeadSpaces = 0;
 
   /* Extract the program names from argv[0] */
   GetProgramNames(argv[0]);
@@ -101,7 +106,7 @@ int main(int argc, char *argv[]) {
   /* Process arguments */
   for (i=1; i<argc; i++) {
     char *arg = argv[i];
-    if (   (arg[0] == '-')
+    if (   ((arg[0] == '-') && arg[1])
 #if defined(_WIN32)
 	|| (arg[0] == '/')
 #endif
@@ -252,7 +257,34 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-  /* Parse the input */
+  /* Get the head spaces, that libxml2 skips */
+  if (!strcmp(infilename, "-")) {
+    hIn = stdin;
+  } else {
+    hIn = fopen(infilename, "rb");
+    if (!hIn) {
+      fprintf(stderr, "Error: Can't open input file \"%s\"\n", infilename);
+      return 1;
+    }
+  }
+  while ((i = fgetc(hIn)) != EOF) {
+    if (!isspace(i)) {
+      if (hIn == stdin) {
+      	ungetc(i, stdin);
+      } else {
+      	fclose(hIn);
+      }
+      break;
+    }
+    pszHeadSpaces = realloc(pszHeadSpaces, nHeadSpaces + 1);
+    if (!pszHeadSpaces) {
+      fprintf(stderr, "Error: Not enough memory\n");
+      return 1;
+    }
+    pszHeadSpaces[nHeadSpaces++] = (char)i;
+  }
+
+  /* Parse the ML input */
   doc = xmlReadFile(infilename, NULL, iParseOpts);
   if (doc == NULL) {
     fprintf(stderr, "Failed to parse ML in \"%s\"\n", infilename);
@@ -286,10 +318,26 @@ int main(int argc, char *argv[]) {
     xmlTrimTextNodes(xmlDocGetRootElement(doc)); // Trim spaces around text nodes
   }
 
-  /* Generate the output */
-  ctxt = xmlSaveToFilename(outfilename, NULL, iSaveOpts);
+  /* Output the head spaces extracted above */
+  if (!strcmp(outfilename, "-")) {
+    hOut = stdout;
+  } else {
+    hOut = fopen(outfilename, "wb");
+    if (!hOut) {
+      fprintf(stderr, "Error: Can't open output file \"%s\"\n", outfilename);
+      return 1;
+    }
+  }
+  if (nHeadSpaces) {
+    fwrite(pszHeadSpaces, nHeadSpaces, 1, hOut);
+    fflush(hOut); /* Without this, the spaces are output _after_ the ML! */
+  }
+
+  /* Generate the ML output */
+  ctxt = xmlSaveToFd(fileno(hOut), NULL, iSaveOpts);
   xmlSaveDoc(ctxt, doc);
   xmlSaveClose(ctxt);
+  if (hOut != stdout) fclose(hOut);
   xmlFreeDoc(doc);
   xmlCleanupParser(); /* Cleanup function for the XML library. */
 
