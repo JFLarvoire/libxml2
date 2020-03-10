@@ -12,9 +12,10 @@
  *  2019-05-13 JFL Added options -pH and -ph.
  *  2020-03-09 JFL Pass head spaces through unchanged.
  *		   Fixed the parsing of the - special arguments.
+ *  2020-03-10 JFL Minor update to yesterday's head spaces change.
  */
 
-#define VERSION "2020-03-09"
+#define VERSION "2020-03-10"
 
 #include <stdio.h>
 #include <string.h>
@@ -97,7 +98,7 @@ int main(int argc, char *argv[]) {
   int iDeleteBlankNodes = 0;
   int iTrimSpaces = 0;
   FILE *hIn, *hOut;
-  char *pszHeadSpaces = malloc(1);
+  char *pszHeadSpaces = NULL;
   int nHeadSpaces = 0;
 
   /* Extract the program names from argv[0] */
