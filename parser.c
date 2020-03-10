@@ -2354,7 +2354,7 @@ xmlDetectMarkupType(xmlParserCtxtPtr ctxt) {
     char c;
     int i;
 
-    /* First chek if the user told us the ML type */
+    /* First check if the user told us the ML type */
     if (!(ctxt->options & XML_PARSE_DETECT_ML)) {
         if (ctxt->options & XML_PARSE_SML) {
 	    ctxt->mlType = XML_TYPE_SML;
@@ -2367,7 +2367,7 @@ xmlDetectMarkupType(xmlParserCtxtPtr ctxt) {
     GROW;
     ctxt->mlType = XML_TYPE_UNKNOWN;
 
-    /* First, a strong indicator is to look for an ?xml header or a comment */
+    /* If not, a strong indicator is to look for an ?xml header or a comment */
     for (i=0; i<(INPUT_CHUNK-3); i++) {
     	if (ctxt->instate == XML_PARSER_EOF) break;
     	c = NXT(i);
@@ -2390,13 +2390,22 @@ xmlDetectMarkupType(xmlParserCtxtPtr ctxt) {
 	}
     }
     /* If this failed, a weak indicator is to scan for the first < or { */
-    if (ctxt->mlType == XML_TYPE_UNKNOWN) for ( ; i<INPUT_CHUNK; i++) {
+    if (ctxt->mlType == XML_TYPE_UNKNOWN) for (i=0 ; i<INPUT_CHUNK; i++) {
     	if (ctxt->instate == XML_PARSER_EOF) break;
     	c = NXT(i);
         if (c == '<') {
             ctxt->mlType = XML_TYPE_XML;
 	    break;
 	} else if (c == '{') {
+            ctxt->mlType = XML_TYPE_SML;
+	    break;
+	}
+    }
+    /* An even weaker indicator is to scan for the first non blank character */
+    if (ctxt->mlType == XML_TYPE_UNKNOWN) for (i=0; i<INPUT_CHUNK; i++) {
+    	if (ctxt->instate == XML_PARSER_EOF) break;
+    	c = NXT(i);
+        if (!IS_BLANK_CH(c)) {
             ctxt->mlType = XML_TYPE_SML;
 	    break;
 	}
