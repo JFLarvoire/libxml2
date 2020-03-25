@@ -4,8 +4,8 @@
 XML toolkit from the GNOME project
 ==================================
 
-... adding experimental support for parsing and generating SML
-==============================================================
+... adding support for parsing and generating SML
+=================================================
 
 For information about SML, standing for "Simplified XML", see the presentation page 137 of:  
 http://archive.xmlprague.cz/2018/files/xmlprague-2018-proceedings.pdf  
