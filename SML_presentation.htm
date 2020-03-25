@@ -1,0 +1,668 @@
+<html xmlns:ng="http://docbook.org/docbook-ng">
+ <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+  <title>SML - A simpler and shorter representation of XML</title>
+  <meta name="generator" content="DocBook XSL Stylesheets V1.79.2">
+  <meta name="description" content="SML presentation, done at the XML 2018 conference in Prague">
+  <meta name="keywords" content="XML, SML, Markup, Serialization, Serialization formats">
+ </head>
+ <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+  <div lang="en" class="article">
+   <div class="titlepage">
+    <div>
+     <div>
+      <h1 class="title"><a name="d5e1"></a>SML - A simpler and shorter representation of XML</h1>
+     </div>
+     <div>
+      <div class="author">
+       <h3 class="author">Jean-Fran&ccedil;ois Larvoire</h3>
+       <div class="affiliation">
+        <span class="jobtitle">Technical Leader<br></span>
+        <span class="orgname">Hewlett Packard Enterprise<br></span>
+       </div>
+       <code class="email">&lt;<a class="email" href="mailto:jf.larvoire@hpe.com">jf.larvoire@hpe.com</a>&gt;</code>
+      </div>
+     </div>
+     <div><p class="releaseinfo">2018-01-31, edited 2020-03-25 for publishing as HTML on GitHub</p></div>
+     <div>
+      <div class="abstract">
+       <p class="title"><b>Abstract</b></p>
+       <p>When XML is used for encoding structured data, one of the things people most often
+	  complain about is that XML is more verbose, and harder to read by humans, than most
+	  alternatives. This may even cause some of them to abandon XML altogether.</p>
+       <p>Many alternatives to XML have actually been designed to specifically address this issue.
+	  Some are indeed better, being both simple and more powerful. But I think that creating new
+	  standards for this reason is missing the point. XML and JSON now dominate the structured
+	  data interchanges, and they're not going to be displaced any time soon, even by better
+	  alternatives.</p>
+       <p>Instead, this paper proposes a Simplified representation of XML (SML for short), that is
+	  strictly equivalent to XML. Strictly equivalent in the sense that any XML file can be
+	  converted to SML, then back into XML, and be binary equal to the initial file. And these SML
+	  data files are smaller, and much easier to read and edit by mere humans.</p>
+       <p>A Tcl script called <a href="https://github.com/JFLarvoire/SysToolsLib/blob/master/Tcl/sml.tcl">sml.tcl</a>
+	  is available for easily testing that concept, by converting
+	  files back and forth between the XML and SML formats. I've been using it advantageously for
+	  several years as part of my job. Every time I have to review an unknown XML file, I convert
+	  it to SML and open it in a plain text editor. It's arguably even easier to read than JSON.
+	  Then, if changes are needed, I make these changes in the SML text, and convert the result
+	  back to XML.</p>
+       <p>Recently, I verified that the full libxml2 test suite can be successfully converted to
+	  SML and back, with no change.</p>
+       <p>Also I'm working on a libxml2 fork that can parse both XML and SML, and output either
+	  one at will. A demonstrator is available on GitHub, including a C XML&#8596;SML conversion program
+	  called <a href="https://github.com/JFLarvoire/libxml2/releases">sml2.exe</a>
+	  that's 20 times faster than the Tcl script.</p>
+       <p>Other qualities:</p>
+       <p>- SML files are noticeably smaller than XML files. Using this format directly for
+	  storage or data transfer protocols saves space and network bandwidth. This does not require
+	  rewriting any XML data creation/consumption routine, but just to insert XML&#8596;SML conversion
+	  routines in the pipeline.</p>
+       <p>- SML is a nice format for serializing and reviewing small file system trees contents,
+	  for example the Linux /proc/fs trees.</p>
+       <p>Limitations:</p>
+       <p>- The simplification is considerable for structured data trees, but less so for mixed
+	  content cases, like in XHTML, DocBook, etc. Although all such mixed files can also be
+	  successfully converted to SML and back, the SML version may actually be more complex than
+	  the original XML. This is especially the case for XHTML files with markup peppered randomly
+	  all over the text. On the other hand, well formatted DocBook converts rather well.</p>
+       <p>Note: I'm aware that another data format called SML was proposed in 1999. The proposal
+	  here has no relationship at all with the other one from 1999. If this homonymy proves to be
+	  a problem, I'm open to any suggestion as to a better name.</p>
+      </div>
+     </div>
+    </div>
+    <hr>
+   </div>
+   <div class="toc"><p><b>Table of Contents</b></p><dl class="toc"><dt><span class="section"><a href="#d5e35">Introduction</a></span></dt><dd><dl><dt><span class="section"><a href="#d5e40">Alternatives to XML</a></span></dt><dt><span class="section"><a href="#d5e80">Alternative representations of XML</a></span></dt><dt><span class="section"><a href="#d5e117">Birth of the SML concept</a></span></dt><dt><span class="section"><a href="#d5e125">The SML Solution</a></span></dt></dl></dd><dt><span class="section"><a href="#d5e179">SML Syntax rules</a></span></dt><dd><dl><dt><span class="section"><a href="#d5e182">Elements</a></span></dt><dt><span class="section"><a href="#d5e193">Attributes</a></span></dt><dt><span class="section"><a href="#d5e200">Content data</a></span></dt><dt><span class="section"><a href="#d5e211">Other types of markup</a></span></dt><dt><span class="section"><a href="#d5e230">Heuristics for XML&#8596;SML conversion</a></span></dt><dt><span class="section"><a href="#d5e241">Syntax rules discussion</a></span></dt></dl></dd><dt><span class="section"><a href="#d5e296">SML characteristics</a></span></dt><dd><dl><dt><span class="section"><a href="#d5e298">SML files size</a></span></dt><dt><span class="section"><a href="#d5e306">Effect on mixed content</a></span></dt><dt><span class="section"><a href="#d5e375">Comparison with other data serialization formats</a></span></dt></dl></dd><dt><span class="section"><a href="#d5e423">The sml.tcl conversion script</a></span></dt><dd><dl><dt><span class="section"><a href="#d5e425">Presentation</a></span></dt><dt><span class="section"><a href="#d5e438">Test methodology</a></span></dt><dt><span class="section"><a href="#d5e451">Performance</a></span></dt><dt><span class="section"><a href="#d5e455">Known limitations</a></span></dt></dl></dd><dt><span class="section"><a href="#d5e462">Support for SML in the libxml2 library</a></span></dt><dd><dl><dt><span class="section"><a href="#d5e464">Presentation</a></span></dt><dt><span class="section"><a href="#d5e483">Non binary-reversibility</a></span></dt><dt><span class="section"><a href="#d5e487">Issues with the xmlWriter APIs</a></span></dt></dl></dd><dt><span class="section"><a href="#d5e496">Other scripts</a></span></dt><dd><dl><dt><span class="section"><a href="#d5e498">The show script</a></span></dt><dt><span class="section"><a href="#d5e514">The spath script</a></span></dt></dl></dd><dt><span class="section"><a href="#d5e536">Next Steps</a></span></dt><dt><span class="bibliography"><a href="#references">Bibliography</a></span></dt></dl></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="d5e35"></a>Introduction</h2></div></div></div><p>I started thinking about alternative views into XML files many years ago because of a
+      personal itch: I needed to repeatedly tweak a complex XML configuration file for a Linux
+      Heartbeat cluster in the lab. No DTDs available. No specialized XML editors installed on that
+      machine. Editing the file using a plain text editor was painful every time.</p><p>Why had it to be so? XML is a text format that was supposed to be designed for easy manual
+      edition by humans. And XML proponents actually list this feature as an advantage of XML. Yet
+      XML tags are so verbose that it is a pain to manually review and edit anything but trivial XML
+      files. The numerous XML editors available are a relief, but do not resolve the fundamental
+      problem of XML verbosity when it comes to simply reading the file. (Actually I think their
+      very existence is proof that XML has a problem!)</p><p>In the absence of a solution, I avoided using XML for my own projects as much as I could,
+      and kept looking at alternatives, in the hope that one of them would eventually replace XML as
+      the new data exchange standard.</p><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e40"></a>Alternatives to XML</h3></div></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="d5e42"></a>Distinct syntaxes</h4></div></div></div><p>Many other people have complained about XML unfriendly syntax too, and many have
+          proposed alternatives. Simply search "XML alternatives" of the Web and you'll find plenty!
+          (One of which was actually called SML too! No resemblance to this one).</p><p>A few important ones are:</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>ASN.1 XER (XML Encoding Rules) [<a class="citation" href="#d5e552"><span class="citation">ASN.1 XER</span></a>] - ASN.1 is widely
+              used in the telecom industry. XER is ASN.1 converted to XML.</p><p>Pro: Powerful. XER documents compatible with XML document model.</p><p>Con: Complex. Simpler alternatives now widespread.</p></li><li class="listitem"><p>JSON JavaScript Object Notation [<a class="citation" href="#d5e567"><span class="citation">JSON</span></a>] - The most popular of
+              the alternatives now, by far.</p><p>Pro: Powerful and simple. Easy to use, with I/O libraries available for most
+              languages. </p><p>Con: Not adapted for mixed content cases.</p></li><li class="listitem"><p>Google Protocol Buffers [<a class="citation" href="#d5e590"><span class="citation">Protocol Buffers</span></a>] - Used internally by
+              Google for all structured data transfers.</p><p>Pro: Simple syntax. Compiler for generating compact and fast binary encodings for
+              wire transfers.</p><p>Con: Even Google seems to prefer JSON for public end-user APIs.</p></li></ul></div><p>And <span class="emphasis"><em>many</em></span> other proposals [<a class="citation" href="#d5e557"><span class="citation">COMPARISON</span></a>], with
+          varying levels of success. Old and new examples:</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>YAML Ain't Markup Language [<a class="citation" href="#d5e660"><span class="citation">YAML</span></a>] - A human readable
+              serialization language, inspired by Internet Mail syntax.</p></li><li class="listitem"><p>{mark} [<a class="citation" href="#d5e580"><span class="citation">mark</span></a>] - A JSON+XML synthesis, announced in Jan.
+              2018.</p><p>Pro: A simple and very readable syntax. All JSON and XML features, allowing to
+              replace either without missing anything.</p><p>Con: Incompatible with both.</p></li></ul></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="d5e74"></a>Subsets of XML</h4></div></div></div><p>Others have also attempted to &#8220;fix&#8221; XML by keeping only a subset of XML. The W3C
+          themselves have made a such a proposal, called Simple XML [<a class="citation" href="#d5e597"><span class="citation">Simple XML</span></a>].
+          The Wikipedia page for that same (?) proposal [<a class="citation" href="#d5e602"><span class="citation">Simple XML#2</span></a>]) goes much
+          further, by abandoning attributes. Although this does make the tree structure simpler,
+          this definitely does not make the document more readable. MicroXML
+            [<a class="citation" href="#d5e585"><span class="citation">MicroXML</span></a>] discussed further down is also in this category,
+          abandoning declarations and processing instructions.</p></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e80"></a>Alternative representations of XML</h3></div></div></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="d5e82"></a>Binary representation</h4></div></div></div><p>Several groups have proposed binary representations of XML, including one that has
+          been officially endorsed by the W3C:</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>Efficient XML Interchange (EXI) Format 1.0 [<a class="citation" href="#d5e562"><span class="citation">EXI</span></a>]</p></li></ul></div><p>These methods address a different problem, which is finding the smallest and most
+          efficient way to transfer XML data. Yet they prove one thing, which is that alternative
+          representations of XML are possible and practical.</p></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="d5e90"></a>JSON representation</h4></div></div></div><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>MicroXML [<a class="citation" href="#d5e585"><span class="citation">MicroXML</span></a>] - A subset of XML, that can be presented
+              using a JSON syntax.</p><p>Pro: Brings attributes to standard JSON.</p><p>Con: The JSON version is longer than both SML and XML. No declarations nor
+              processing instructions.</p></li><li class="listitem"><p>The XSLT xml-to-json function [<a class="citation" href="#d5e650"><span class="citation">xml-to-json</span></a>] is part of a scheme
+              allowing to convert JSON to a subset of XML, and that XML back to JSON. But it cannot
+              convert any XML, only an XML representation of JSON.</p><p>That XML-to-JSON back conversion can also be done using an XSLT style
+              sheet.</p></li></ul></div><p>This XSLT json-to-xml and xml-to-json scheme is basically the inverse of
+          MicroXML:</p><p>
+          </p><div class="table"><a name="d5e104"></a><p class="title"><b>Table&nbsp;1.&nbsp;</b></p><div class="table-contents"><table class="table" summary="" border="1"><colgroup><col class="c1"><col class="c2"></colgroup><tbody><tr><td>MicroXML</td><td>XML &#8594; JSON representation of XML &#8594; XML</td></tr><tr><td>XSLT scheme</td><td>JSON &#8594; XML representation of JSON &#8594; JSON</td></tr></tbody></table></div></div><p><br class="table-break">
+        </p><p>Yet neither proposal can ensure full compatibility between JSON and XML.</p></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e117"></a>Birth of the SML concept</h3></div></div></div><p>At the same time I had these problems with the XML configuration files for Heartbeat, I
+        was writing Tcl scripts for managing Lustre file systems on that cluster. The instances of
+        my scripts on every node were exchanging increasingly big Tcl structures (As strings,
+        embedded in network packets), for synchronizing their action. And I kept finding this both
+        convenient, and easy to program and debug. (i.e. Review the structures exchanged when
+        something went wrong!)</p><p>And then I began to think that the two problems were linked: XML is nothing more than a
+        textual presentation of a structured tree of data. A Tcl program or a Tcl data structure is
+        also a textual presentation of a structured tree of data. And the essence of XML is not its
+        &lt;tagged&gt;&lt;blocks&gt;, but rather its logical structure with a tree of elements,
+        attributes, and content blocks with other embedded elements inside. In other words its DOM
+        (Document Object Model).</p><p>All programs written in C, Java, Tcl, PHP, etc, share a common simple syntax for
+        representing program trees {based on {nested blocks} surrounded by parentheses}, which is
+        much easier to read by humans than the &lt;tagged&gt;&lt;blocks&gt; used by
+        XML&lt;/blocks&gt;&lt;/tagged&gt;. The Tcl language has the simplest syntax in that family,
+        with a grammar with just a dozen rules, and punctuation marks optional in simple cases. This
+        makes it particularly easy to read and parse. And its one-instruction-per-line standard
+        (Like Python or Go) is a natural match to all canonically formatted XML data files with one
+        element per line.</p><p>Instead of reinventing a new data structure presentation language, it should be possible
+        to convert XML into an equivalent Tcl-like format, while preserving all the elements,
+        attributes, and data structures.</p><p>This defined a new problem: Find a text format inspired by Tcl, which is simpler than
+        XML, yet is strictly equivalent to it. Equivalent in the mathematical sense that any XML
+        file can be converted to that simpler format, then back into XML with no change
+        whatsoever.</p><p>Non-goals: Do not try to generate valid Tcl syntax at all. The result is actually
+        incompatible with Tcl in general.</p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e125"></a>The SML Solution</h3></div></div></div><p>Keep the XML DOM tree model with elements made of a tag, optional attributes, and an
+        optional data block, but use a simpler text representation based on the syntax of the C
+        family languages. </p><p>The basic idea is that XML and SML elements correspond to each other like this:</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>XML elements: &lt;tag attribute="value" ...&gt;contents&lt;/tag&gt;</p></li><li class="listitem"><p>SML elements: tag attribute="value" ... {contents}</p></li></ul></div><p>But the devil lies in the details, and it took a while to find a set of rules that would
+        cover all XML syntax cases, allow fully reversible conversions, optimize the readability of
+        real-world files, and remain reasonably simple. After experimenting with a number of
+        alternatives, I arrived at the set of rules defined further down, which give good results on
+        real-world documents.</p><div class="example"><a name="d5e135"></a><p class="title"><b>Example&nbsp;1.&nbsp;Example extracted from a Google Earth file:</b></p><div class="example-contents"><em><span class="remark">(Note: The two columns may overflow when printed. Best viewed on screen as
+          HTML.)</span></em><div class="informaltable"><table class="informaltable" border="1"><colgroup><col><col></colgroup><thead><tr><th>XML (from a Google Earth .kml file)</th><th>SML (generated by the sml script)</th></tr></thead><tbody><tr><td><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;kml&gt;
+  &lt;Folder&gt;
+    &lt;name&gt;Sites in the Alps&lt;/name&gt;
+    &lt;open&gt;1&lt;/open&gt;
+    &lt;Folder&gt;
+      &lt;name&gt;Drome&lt;/name&gt;
+      &lt;visibility&gt;0&lt;/visibility&gt;
+      &lt;Placemark&gt;
+        &lt;description&gt;Take off&lt;/description&gt;
+        &lt;name&gt;Mont Rachas&lt;/name&gt;
+        &lt;LookAt&gt;
+          &lt;longitude&gt;5.0116666667&lt;/longitude&gt;
+          &lt;latitude&gt;44.8355&lt;/latitude&gt;
+          &lt;range&gt;4000&lt;/range&gt;
+          &lt;tilt&gt;45&lt;/tilt&gt;
+          &lt;heading&gt;0&lt;/heading&gt;
+        &lt;/LookAt&gt;
+      &lt;/Placemark&gt;
+    &lt;/Folder&gt;
+  &lt;/Folder&gt;
+&lt;/kml&gt;</pre></td><td><pre class="programlisting">?xml version="1.0" encoding="UTF-8"
+kml {
+  Folder {
+    name "Sites in the Alps"
+    open 1
+    Folder {
+      name Drome
+      visibility 0
+      Placemark {
+        description "Take off"
+        name "Mont Rachas"
+        LookAt {
+          longitude 5.0116666667
+          latitude 44.8355
+          range 4000
+          tilt 45
+          heading 0
+        }
+      }
+    }
+  }
+}</pre></td></tr></tbody></table></div><p>The difference in readability should be immediately obvious!</p></div></div><br class="example-break"><div class="example"><a name="d5e151"></a><p class="title"><b>Example&nbsp;2.&nbsp;Another example in XSLT:</b></p><div class="example-contents"><div class="informaltable"><table class="informaltable" border="1"><colgroup><col><col></colgroup><thead><tr><th>XSLT (from the XSLT 3.0 spec)</th><th>SML (generated by the sml script)</th></tr></thead><tbody valign="top"><tr><td valign="top"><pre class="programlisting">&lt;xsl:stylesheet
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+  version="3.0"
+  expand-text="yes"&gt;
+    
+ &lt;xsl:strip-space elements="PERSONAE"/&gt;
+    
+ &lt;xsl:template match="PERSONAE"&gt;
+   &lt;html&gt;
+     &lt;head&gt;
+       &lt;title&gt;The Cast of {@PLAY}&lt;/title&gt;
+     &lt;/head&gt;
+     &lt;body&gt;
+       &lt;xsl:apply-templates/&gt;
+     &lt;/body&gt;
+   &lt;/html&gt;
+ &lt;/xsl:template&gt;
+ 
+ &lt;xsl:template match="TITLE"&gt;
+   &lt;h1&gt;{.}&lt;/h1&gt;
+ &lt;/xsl:template&gt;
+ 
+ &lt;xsl:template match="PERSONA"&gt;
+   &lt;p&gt;&lt;b&gt;{.}&lt;/b&gt;&lt;/p&gt;
+ &lt;/xsl:template&gt;
+
+&lt;/xsl:stylesheet&gt;</pre></td><td valign="top"><pre class="programlisting">xsl:stylesheet\
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"\
+  version="3.0"\
+  expand-text="yes" {
+    
+ xsl:strip-space elements="PERSONAE"
+    
+ xsl:template match="PERSONAE" {
+   html {
+     head {
+       title "The Cast of {@PLAY}"
+     }
+     body {
+       xsl:apply-templates
+     }
+   }
+ }
+ 
+ xsl:template match="TITLE" {
+   h1 "{.}"
+ }
+ 
+ xsl:template match="PERSONA" {
+   p {b "{.}"}
+ }
+
+}</pre></td></tr></tbody></table></div></div></div><br class="example-break"><div class="example"><a name="d5e165"></a><p class="title"><b>Example&nbsp;3.&nbsp;Another example in XML Schema:</b></p><div class="example-contents"><div class="informaltable"><table class="informaltable" border="1"><colgroup><col><col></colgroup><thead><tr><th>Union datatype examp. (from the 1.1 spec)</th><th>SML (generated by the sml script)</th></tr></thead><tbody valign="top"><tr><td valign="top"><pre class="programlisting">&lt;attributeGroup name="occurs"&gt;
+  &lt;attribute name="minOccurs"
+      type="nonNegativeInteger"
+      use="optional" default="1"/&gt;
+  &lt;attribute name="maxOccurs"
+      use="optional" default="1"&gt;
+    &lt;simpleType&gt;
+      &lt;union&gt;
+	&lt;simpleType&gt;
+	  &lt;restriction base='nonNegativeInteger'/&gt;
+	&lt;/simpleType&gt;
+	&lt;simpleType&gt;
+	  &lt;restriction base='string'&gt;
+	    &lt;enumeration value='unbounded'/&gt;
+	  &lt;/restriction&gt;
+	&lt;/simpleType&gt;
+      &lt;/union&gt;
+    &lt;/simpleType&gt;
+  &lt;/attribute&gt;
+&lt;/attributeGroup&gt;</pre></td><td valign="top"><pre class="programlisting">attributeGroup name="occurs" {
+  attribute name="minOccurs"\
+      type="nonNegativeInteger"\
+      use="optional" default="1"
+  attribute name="maxOccurs"\
+      use="optional" default="1" {
+    simpleType {
+      union {
+	simpleType {
+	  restriction base='nonNegativeInteger'
+	}
+	simpleType {
+	  restriction base='string' {
+	    enumeration value='unbounded'
+	  }
+	}
+      }
+    }
+  }
+}</pre></td></tr></tbody></table></div></div></div><br class="example-break"></div></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="d5e179"></a>SML Syntax rules</h2></div></div></div><p>(Note: This is not a BNF grammar, but rather a list of principles, that allow to
+      successfully convert XML &#8596; SML.)</p><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e182"></a>Elements</h3></div></div></div><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>Elements normally end at the end of the line.</p></li><li class="listitem"><p>They continue on the next line if there's a trailing '\'.</p></li><li class="listitem"><p>They also continue if there's an open "quotes" or {curly braces} block.</p></li><li class="listitem"><p>Multiple elements on the same line must be separated by a ';'.</p></li></ul></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e193"></a>Attributes</h3></div></div></div><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>The syntax for attributes is the same as for XML. Including the rules for using
+            quotes and escape chars. (And so is different from SML's text elements quoting syntax,
+            which allows quoting any text with ' &amp; ".)</p></li><li class="listitem"><p>There must be at least one space between the last attribute and the beginning of the
+            content data.</p></li></ul></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e200"></a>Content data</h3></div></div></div><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>The content data are normally inside a {curly braces} block.</p></li><li class="listitem"><p>The content text is between "quotes". Escape '\' and '"' with a '\'.</p></li><li class="listitem"><p>If there are no further child elements embedded in contents (i.e. it's only text),
+            the braces can be omitted.</p></li><li class="listitem"><p>Furthermore, if the text does not contain blanks, '"', '=', ';', '#', '{', '}',
+            '&lt;', '&gt;', nor a trailing '\', the quotes around the text can be omitted too. (i.e.
+            If the text cannot be confused with an attribute or a comment or any kind of SML
+            markup.)</p></li></ul></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e211"></a>Other types of markup</h3></div></div></div><p>All use the same rules as the elements for juxtaposition and continuation.</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>This is a <span class="bold"><strong>?Processing instruction</strong></span> . (The final '?'
+            in XML is removed in SML.)</p></li><li class="listitem"><p>This is a <span class="bold"><strong>!Declaration</strong></span> . (Ex: a !doctype
+            definition)</p></li><li class="listitem"><p>This is a <span class="bold"><strong>#-- Comment block, ending with two dashes
+              --</strong></span> .</p></li><li class="listitem"><p>Simplified case for a <span class="bold"><strong># One-line comment </strong></span>.</p></li><li class="listitem"><p>This is a <span class="bold"><strong>&lt;[[ Cdata section ]]&gt; </strong></span>. An optional
+            new line, immediately following the opening &lt;[[, is discarded if present.</p></li></ul></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e230"></a>Heuristics for XML&#8596;SML conversion</h3></div></div></div><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>Spaces/tabs/new lines are preserved.</p></li><li class="listitem"><p>The sml program adds one space after the end of the element definition (i.e. after
+            the last attribute and optional trailing spaces inside the element head), before the
+            beginning of the data block. This considerably improves the readability of the sml
+            output. Then it removes it when converting SML back to XML. An SML file is invalid
+            without that space anyway.</p></li><li class="listitem"><p>Empty data blocks (i.e. Blocks containing just spaces) encoding: Use {} for
+            multi-line blocks, and "" for single-line ones.</p></li><li class="listitem"><p>Unquoted attribute values are accepted, in an attempt to be compatible with
+            HTML-style attributes, which do occur in poorly-written XML files.</p></li></ul></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e241"></a>Syntax rules discussion</h3></div></div></div><p>XML files without mixed data usually contain a hierarchy of outer elements embedded
+        within each other with no text. Then the terminal elements (the inner-most elements) contain
+        just text.</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>
+            <span class="emphasis"><em>SML elements normally end at the end of the line</em></span>. A natural match
+            for canonically formatted XML files, with one XML terminal element per line.</p></li><li class="listitem"><p>
+            <span class="emphasis"><em>They continue on the next line if there's a trailing '\'.</em></span> Same rule
+            as for Tcl, and many other programming languages.</p></li><li class="listitem"><p>
+            <span class="emphasis"><em>They also continue if there's an open "quotes" or {curly braces}
+              block</em></span>. This is a major advantage of the Tcl syntax, allowing to minimize
+            the syntactic glue characters.</p></li><li class="listitem"><p>
+            <span class="emphasis"><em>Multiple elements on the same line must be separated by a ';'.</em></span>
+            Again, the same as Tcl.</p></li><li class="listitem"><p>
+            <span class="emphasis"><em>The syntax for attributes is the same as for XML:</em></span>
+            <code class="code">name="value"</code> with value between 'single' or "double" quotes, and using
+            references (like &amp;amp; , &amp;lt; , &amp;gt; , &amp;apos; , &amp;quot;) to escape
+            the special characters in values. I considered using Tcl's quoting rules instead. But
+            this made the conversion program more complex, and did not make the SML more readable.
+            (Actually it made it less readable, making it more difficult to read long lists of
+            attributes.) Most real-world attribute values will look exactly the same as the
+            equivalent Tcl string anyway. TDL [<a class="citation" href="#d5e617"><span class="citation">TDL</span></a>] proposes an interesting
+            alternative: Write attributes as functions named options, with a dash: <code class="code">-name
+              value</code> Pro: Easier to parse in Tcl. Con: Less intuitive to people who don't know
+            Tcl. Con: Makes it more difficult to deal with HTML-like attributes that have no
+            value.</p></li><li class="listitem"><p>
+            <span class="emphasis"><em>The content data are normally inside a {curly braces} block. Braces in the
+              content text must be escaped by a '\'.</em></span> Same as Tcl {blocks}. Works well for
+            XML outer elements containing inner elements.</p></li><li class="listitem"><p>
+            <span class="emphasis"><em>If there are no further child elements embedded in contents (i.e. only text),
+              the braces can be omitted.</em></span> A major readability improvement. The quoting
+            rules for the text ensure that the text content cannot be confused with an additional
+            attribute.</p></li><li class="listitem"><p>
+            <span class="emphasis"><em>The quotes around text can be omitted if the text does not contain blanks,
+              '"', '=', ';', '#', '{', '}', '&lt;', '&gt;', nor a trailing '\', and if there are no
+              other elements at the same tree depth. (i.e. It cannot be confused with an attribute
+              or a comment or any kind of SML markup.)</em></span> Maximizes readability by removing
+            all extra characters around simple values. Possible alternative: In the cases where text
+            and elements are mixed at the same tree depth (Like in XHTML, DocBook, etc), use a
+            pseudo element tag like !text or just @ (But not #text which would look like a comment)
+            to flag it. This would allow extending the SML syntax to support element names with
+            spaces. See the "show script" section below for a useful application of that.</p></li><li class="listitem"><p>
+            <span class="emphasis"><em>This is a </em></span>?Processing instruction . <span class="emphasis"><em>This is a
+            </em></span>!Declaration . (Ex: A !doctype definition) Both are treated like XML empty
+            elements, with a name beginning with an '?' or a '!'. All contents are preserved, except
+            for the final ?&gt; and &gt; respectively. Add a '\' at the end of lines if the element
+            continues on the following lines.</p></li><li class="listitem"><p>
+            <span class="emphasis"><em>Simplified case for a </em></span># One-line comment . Same as for Tcl, and
+            many other scripting languages.</p></li><li class="listitem"><p>
+            <span class="emphasis"><em>This is a </em></span>#-- Comment block -- . I considered using other syntaxes,
+            like &lt;# Multi-line comment #&gt; in PowerShell. But this was barely more concise, and
+            this created problems to deal with the -- sequence in SML (not valid in an XML comment),
+            or the #&gt; sequence in XML (not valid in an SML comment in that case) In fine, the
+            simplest was to stick to the -- delimiters like in XML.</p></li><li class="listitem"><p>
+            <span class="emphasis"><em>This is a </em></span>&lt;[[ CDATA section ]]&gt; Like for comment blocks,
+            sticking to the XML termination sequence proved to be the easiest option. Any other type
+            of delimiter would have required complex escaping rules, in case that delimiter appears
+            in the CDATA itself. The possibility of having adjacent CDATA sections would have made
+            these rules even more complex. By symmetry, I used <code class="literal">&lt;[[</code> for the
+            opening sequence. Note that the CDATA<code class="literal">]]&gt;</code> end markers cannot be
+            confused with the <code class="literal">]]&gt;</code> end markers at the end of some complex
+            !declarations, because those ones become <code class="literal">]]</code> after the final '&gt;' is
+            removed in SML. <span class="emphasis"><em>An optional new line, immediately following the opening
+              &lt;[[, is discarded.</em></span> This makes it easy to view multiple lines of CDATA.
+            The first line will begin on the first column, like all the others. Gotcha: That
+            additional new line <span class="underline">must</span> be inserted if the CDATA
+            begins with an initial new line. Else the initial new line would be lost during the
+            conversion back to XML. Possible alternative: I experimented with simpler alternatives
+            in other programs. One is the indented block, used in the show.tcl script described
+            further down: </p><div class="informalexample"><pre class="programlisting">Preceding content{
+  This is a sample CDATA with an XML &lt;tag&gt;
+}Following content</pre></div><p>Here, the rule is that all CDATA block contents are indented by two more spaces than
+            the previous line. The first '}' at the same indentation as the opening '{' sign marks
+            the end the CDATA. The CDATA begins after the new line following the opening '{' (So
+            this new line is not optional here), and ends before the final new line before the
+            closing '}'. Pro: More lightweight syntax, more in the spirit of Tcl. Pro: Looks better
+            in deep trees, as multi-line CDATA blocks are indented like the rest. Con: Adds numerous
+            spaces, and makes the CDATA block weight more in bytes. Con: Made the sml conversion
+            program more complex and slower. Variation on the same theme: Particular case of a CDATA
+            section that makes up the whole content of an element: Instead of encoding this content
+            block with double parenthesis <code class="literal">{{\n CDATA\n}}</code>, it'd be written
+              <code class="literal">={\n CDATA\n}</code>
+          </p></li></ul></div></div></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="d5e296"></a>SML characteristics</h2></div></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e298"></a>SML files size</h3></div></div></div><p>An interesting side benefit of the conversion is that the total size of the converted
+        files is 12% smaller than the original XML files. (Tested on a 1MB set of real files
+        gathered at work.) Among big files, that reduction goes from 4% for a file with lots of
+        large CDATA elements, to 17% for a file with deeply nested elements.</p><p>Even after zipping the two full sets of samples, the SML files archive is 2% smaller
+        than the XML files archive. Not much I admit, but this would help Microsoft alleviate the
+        Office documents bloat. &#9786;</p><p>As for XML compression, many dedicated compressors are available (Ex:
+          [<a class="citation" href="#d5e622"><span class="citation">WBXML</span></a>], [<a class="citation" href="#d5e645"><span class="citation">XML PPM</span></a>]). Obviously they give better
+        results than SML. But just as obviously the compressed files are unreadable by
+        humans!</p><p>Reductions are much better on xml documents using name spaces. For example on the sample
+        SOAP envelope from the SOAP 1.2 specification, the gain is 30%. Transporting SOAP messages
+        in their SML form instead of XML would yield huge network bandwidth gains! (In case somebody
+        wants to revive SOAP! &#9786;)</p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e306"></a>Effect on mixed content</h3></div></div></div><p>As mentioned already, mixed content files can be successfully converted to SML and back.
+        But when there's a mix of text and markup <span class="underline">on the same
+          line</span> the SML version is not much simpler to read than the XML one.</p><div class="example"><a name="d5e310"></a><p class="title"><b>Example&nbsp;4.&nbsp;In a simple XHTML example&#8230;</b></p><div class="example-contents"><div class="informaltable"><table class="informaltable" border="1"><colgroup><col class="c1"><col class="c2"><col class="c3"></colgroup><tbody valign="top"><tr><td valign="top">
+                  <p>Formatted text</p>
+                </td><td valign="top">
+                  <p>A line of text with <span class="bold"><strong>bold and
+                        <span class="emphasis"><em>bold+italic</em></span>
+                    </strong></span> parts.</p>
+                </td><td valign="top">
+                  <p>Size</p>
+                </td></tr><tr><td valign="top">
+                  <p>XHTML</p>
+                </td><td valign="top">
+                  <p>&lt;p&gt;A line of text with &lt;b&gt;bold and
+                    &lt;i&gt;bold+italic&lt;/i&gt;&lt;/b&gt; parts.&lt;/p&gt;</p>
+                </td><td valign="top">
+                  <p>68</p>
+                </td></tr><tr><td valign="top">
+                  <p>SML</p>
+                </td><td valign="top">
+                  <p>p {"A line of text with"; b {"bold and"; i bold+italic}; "parts"}</p>
+                </td><td valign="top">
+                  <p>65</p>
+                </td></tr></tbody></table></div><p>&#8230; the SML version is indeed a bit shorter. Yet I find it already more difficult to
+          understand than the original XML.</p></div></div><br class="example-break"><div class="example"><a name="d5e342"></a><p class="title"><b>Example&nbsp;5.&nbsp;But with a little more complex text and formatting &#8230;</b></p><div class="example-contents"><div class="informaltable"><table class="informaltable" border="1"><colgroup><col class="c1"><col class="c2"><col class="c3"></colgroup><tbody valign="top"><tr><td valign="top">
+                  <p>Formatted text</p>
+                </td><td valign="top">
+                  <span class="color:blue">By definition, "<span class="bold"><strong>1mm =
+                      1000&micro;m.</strong></span>"</span>
+                </td><td valign="top">
+                  <p>Size</p>
+                </td></tr><tr><td valign="top">
+                  <p>XHTML</p>
+                </td><td valign="top">
+                  <p>&lt;p style="color:blue"&gt;By definition, "&lt;b&gt;1mm =
+                    1000&amp;micro;m.&lt;/b&gt;"&lt;/p&gt;</p>
+                </td><td valign="top">
+                  <p>69</p>
+                </td></tr><tr><td valign="top">
+                  <p>SML</p>
+                </td><td valign="top">
+                  <p>p style="color:blue" {"By definition, \"";b "1mm =
+                    1000&amp;micro;m.";"\""}</p>
+                </td><td valign="top">
+                  <p>71</p>
+                </td></tr></tbody></table></div><p>&#8230; the SML size is actually longer (71 characters instead of 69 for the XML), and the
+          SML quoting rules become confusing, to the point of making it hard for humans to
+          distinguish the text, markup, and attributes.</p></div></div><br class="example-break"><p>With even more complex mixed content XML, the tendency continues, and SML becomes ever
+        bigger and harder to read for humans.</p><p>On the other hand, when the mixed content is formatted and indented as canonic XML (with
+        at most one element per line), then the conversion yields relatively simple SML, with a
+        significantly smaller size. For example, at some stage, this very article was saved as a
+        64,309 bytes DocBook XML file. Then sml.tcl could convert this XML to a 59,422 bytes SML
+        file, still very agreeable to read.</p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e375"></a>Comparison with other data serialization formats</h3></div></div></div><p>(Note: The two columns may overflow when printed. Best viewed on screen as HTML.)</p><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="d5e378"></a>SML versus XML</h4></div></div></div><p>
+          </p><div class="informaltable"><table class="informaltable" border="1"><colgroup><col><col></colgroup><thead><tr><th>SML</th><th>XML</th></tr></thead><tbody><tr><td><pre class="programlisting">root {
+  # One-line comment 
+  #-- Long comment
+       spanning 2 lines --
+  empty
+  number type="real" 3.14
+  word yes
+  sentence "Hello XML world"
+  sub1 {"with mixed text"
+    sub2 "and inner elements"
+    "and" ;sub3; ;sub4 more
+  }
+  &lt;[[ SML &lt;==&gt; XML ]]&gt;
+}</pre></td><td><pre class="programlisting">&lt;root&gt;
+  &lt;!-- One-line comment --&gt;
+  &lt;!-- Long comment
+       spanning 2 lines --&gt;
+  &lt;empty/&gt;
+  &lt;number type="real"&gt;3.14&lt;/number&gt;
+  &lt;word&gt;yes&lt;/word&gt;
+  &lt;sentence&gt;Hello XML world&lt;/sentence&gt;
+  &lt;sub1&gt;with mixed text
+    &lt;sub2&gt;and inner elements&lt;/sub2&gt;
+    and &lt;sub3/&gt; &lt;sub4&gt;more&lt;/sub4&gt;
+  &lt;/sub1&gt;
+  &lt;![CDATA[ SML &lt;==&gt; XML ]]&gt;
+&lt;/root&gt;</pre></td></tr></tbody></table></div><p>
+        </p></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="d5e393"></a>SML versus MicroXML presented as JSON</h4></div></div></div><p>
+          </p><div class="informaltable"><table class="informaltable" border="1"><colgroup><col><col></colgroup><thead><tr><th>SML</th><th>MicroXML presented as JSON</th></tr></thead><tbody><tr><td><pre class="programlisting">root {
+  # One-line comment 
+  #-- Long comment
+       spanning 2 lines --
+  empty
+  number type="real" 3.14
+  word yes
+  sentence "Hello XML world"
+  sub1 {"with mixed text"
+    sub2 "and inner elements"
+    "and" ;sub3; ;sub4 more
+  }
+  &lt;[[ SML &lt;==&gt; XML ]]&gt;
+}</pre></td><td><pre class="programlisting">["root", {}, [
+  
+  (Note: There are no comments in JSON)
+  
+  ["empty", {}, []],
+  ["number", {"type":"real"}, ["3.14"]],
+  ["word", {}, ["yes"]],
+  ["sentence", {}, ["Hello XML world"]],
+  ["sub1", {}, ["with mixed text",
+    ["sub2", {}, ["and inner elements"]],
+    "and", ["sub3", {}, []], ["sub4", {}, ["more"]]
+  ],
+  " SML &lt;==&gt; XML "
+}</pre></td></tr></tbody></table></div><p>
+        </p></div><div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="d5e408"></a>SML versus {mark}</h4></div></div></div><p>
+          </p><div class="informaltable"><table class="informaltable" border="1"><colgroup><col><col></colgroup><thead><tr><th>SML</th><th>{mark}</th></tr></thead><tbody><tr><td><pre class="programlisting">root {
+  # One-line comment 
+  #-- Long comment
+       spanning 2 lines --
+  empty
+  number type="real" 3.14
+  word yes
+  sentence "Hello XML world"
+  sub1 {"with mixed text"
+    sub2 "and inner elements"
+    "and" ;sub3; ;sub4 more
+  }
+  &lt;[[ SML &lt;==&gt; XML ]]&gt;
+}</pre></td><td><pre class="programlisting">{root
+  // One-line comment
+  /* Long comment
+       spanning 2 lines */
+  {empty}
+  {number type:"real" 3.14}
+  {word "yes"}
+  {sentence "Hello XML world"}
+  {sub1 "with mixed text"
+    {sub2 "and inner elements"}
+    "and" {sub3} {sub4 "more"}
+  }
+  " SML &lt;==&gt; XML "
+}</pre></td></tr></tbody></table></div><p>
+        </p></div></div></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="d5e423"></a>The sml.tcl conversion script</h2></div></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e425"></a>Presentation</h3></div></div></div><p>A well tested XML&#8596;SML conversion program, called <span class="command"><strong>sml.tcl</strong></span>, is
+        open-sourced and available at the URL: <a class="link" href="https://github.com/JFLarvoire/SysToolsLib/blob/master/Tcl/sml.tcl" target="_top">https://github.com/JFLarvoire/SysToolsLib/blob/master/Tcl/sml.tcl</a>
+      </p><p>It works in any system with a Tcl interpreter. (Standard in Linux: Just rename the
+        script as <span class="command"><strong>sml</strong></span> and make it executable. In Windows, a free Tcl interpreter
+        is available at <a class="link" href="http://www.activestate.com/activetcl" target="_top">http://www.activestate.com/activetcl</a>; For recommendations on how to best configure
+        it, see <a class="link" href="https://github.com/JFLarvoire/SysToolsLib/tree/master/Tcl" target="_top">https://github.com/JFLarvoire/SysToolsLib/tree/master/Tcl</a>.) </p><p>It is able to convert any XML file to SML, then back into XML, with the final XML files
+        binary equal to the originals. The script is usable in a pipe. It auto-detects if the input
+        is XML or SML, and outputs the other representation. Use <code class="code">sml -?</code> or <code class="code">sml
+          &#8211;h</code> to display the help screen.</p><p>A simple glance at the contents of the SML files will show, as in the Google Earth
+        example above, that the &#8220;useful&#8221; information is much easier to find. The eye is not
+        distracted anymore by the noise of useless end tags and brackets.</p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e438"></a>Test methodology</h3></div></div></div><p>I've first tested it on a large number of sample XML files from various sources at work,
+        totaling about 1 MB.</p><p>And of course I've been using it regularly for several years. </p><p>More recently, I've tested it successfully with all the libxml2 (<a class="link" href="http://xmlsoft.org/" target="_top">http://xmlsoft.org/</a>) test cases. The only exceptions
+        are the test files encoded in exotic (for me) text encodings like EBCDIC or UTF-16. This is
+        a limitation of the sml.tcl script, but in no way a limitation of the SML syntax. The script
+        works fine with ASCII and UTF-8, and I don't plan to add support for anything else.</p><p>In both cases the testing relies on a self-test routine in the script, triggered by
+        using the <code class="code">sml -t</code> option.</p><p><code class="code">sml -t</code> converts all files of types {*.xml *.xhtml *.xsl *.xsd *.xaml *.kml
+        *.gml} in the current directory to sml, then converts the sml file to xml, then compares
+        each final xml file to the initial one. Any problem during one of the conversions, or if the
+        final file does not match byte-for-byte the initial one, is reported. And in the end it
+        displays statistics about the number of files tested, etc. </p><p>There's an option to change the list of file types to test, if desired.</p><p><code class="code">sml -t -r</code> does the same recursively in all subdirectories.</p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e451"></a>Performance</h3></div></div></div><p>The file has about 3000 lines of code, half of which are an independent debugging
+        library.</p><p>The only issue is performance: It converts about 10 KB/s of data on a 2 GHz machine.
+        This is perfectly fine for small XML files, but can be cumbersome with very large files.
+        Rewriting it in C and optimizing the lowest I/O routines should be able to increase
+        performance by orders of magnitude. I've begun to do that with the libxml2 library.</p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e455"></a>Known limitations</h3></div></div></div><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>As explained above, only ASCII (+ 8-bit supersets) and UTF8 text encodings are
+            supported now.</p></li><li class="listitem"><p>The converted files use the local operating system line endings (\n or \r or \r\n).
+            So if the initial XML file was encoded with line endings for another operating system,
+            converting it to SML then back will not be binary equal to the initial file. But it will
+            still be logically equal, as the XML spec states that all line endings are equivalent to
+            \n.</p></li></ul></div></div></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="d5e462"></a>Support for SML in the libxml2 library</h2></div></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e464"></a>Presentation</h3></div></div></div><p>I started work on a fork of the libxml2 library that can parse both XML and SML, and
+        optionally output SML.</p><p>This fork is available on GitHub at <a class="link" href="https://github.com/JFLarvoire/libxml2" target="_top">https://github.com/JFLarvoire/libxml2</a>.</p><p>Note that this is still a demonstrator with limited capabilities:</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>It can parse well formed SML, but not yet declarations, processing instructions,
+            etc.</p></li><li class="listitem"><p>It can save DOM trees as SML. But it cannot yet write SML directly using the write
+            APIs. Nor can it save HTML documents as SML.</p></li><li class="listitem"><p>I have not tested any of the SAX APIs, so they probably do not work for SML.</p></li><li class="listitem"><p>Of course all XML parsing, processing, and output capabilities are unchanged.</p></li><li class="listitem"><p>A program called sml2.c reads either XML or SML, and outputs the other one.</p></li></ul></div><p>Thanks to the equivalence between XML and SML, the changes are very small relative to
+        the (huge) size of the library. Also note that half of the changes are actually debug
+        instrumentation, which do not need to be retained in the final version.</p><p>Preliminary results show that sml2.exe is about 20 times faster than sml.tcl for
+        converting large XML files to SML.</p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e483"></a>Non binary-reversibility</h3></div></div></div><p>One noticeable result is that sml2.exe <span class="emphasis"><em>cannot</em></span> convert XML files to
+        SML, then back to XML, and yield files that are binary identical to the original one in all
+        cases like sml.tcl does. This is due to a limitation of the libxml2 design, which does not
+        record non-significant white spaces in markup. To allow binary compatibility, we'd need to
+        add an option to parse a new kind of DOM node, recording that kind of non-significant
+        spaces.</p></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e487"></a>Issues with the xmlWriter APIs</h3></div></div></div><p>I've started work on the xmlWriter module, and found one limitation: It will not always
+        generate optimal SML (that is remove the {} or "" when possible) due to limitations of the
+        current API. The reason is that the write APIs separate the opening of an element, the
+        generation of its content, and the closing of the element. (Except for the special case of
+        an empty element.) This does not allow to know when an element is opened if it'll contain
+        just text (allowing to avoid using {}), or sub-elements (requiring the use of {}). </p><p>I see two ways to work around that limitation (actually not mutually exclusive):</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>Add a new API function xmlTextWriterWriteElementAndItsText (+the Format and VFormat
+            variants) Advantage: This would be usable with both XML and SML, and fix common cases.
+            Drawback: This would still not fix the case of elements having attributes, etc. We'd
+            need many new functions to cover all cases.</p></li><li class="listitem"><p>Cache every new element in a temporary DOM sub-tree, then once complete, write that
+            sub-tree. Advantage: This fixes all cases without requiring any change to the write API.
+            Drawback: We lose the performance advantage of the write APIs.</p></li></ul></div></div></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="d5e496"></a>Other scripts</h2></div></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e498"></a>The show script</h3></div></div></div><p>This script allows serializing a whole file system tree as SML (And thus indirectly as
+        XML).</p><p>Open-sourced and available at: <a class="link" href="https://github.com/JFLarvoire/SysToolsLib/blob/master/Tcl/show.tcl" target="_top">https://github.com/JFLarvoire/SysToolsLib/blob/master/Tcl/show.tcl</a>
+      </p><p>The principle is that each file or directory is an SML element. Directories contain
+        inner elements that represent files and subdirectories. File contents are displayed as text
+        if possible, else are dumped in hexadecimal.</p><p>It also has options for generating several alternative experimental SML formats, which
+        have helped convince me which was the most readable solution.</p><p>The show script has two major modes of operation:</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>A simplified mode, which is not fully SML-compatible, but produces the shortest
+            output, easiest to read. (This is the default mode of operation)</p><p>This mode is particularly convenient for reviewing the content of Linux virtual file
+            systems, like <code class="code">/proc/fs</code>.</p></li><li class="listitem"><p>A strict mode, which produces a fully SML-compatible output, at the cost of a
+            heavier output.</p><p>The textual output can be (in theory) used to recreate the complete file
+            system.</p></li></ul></div></div><div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="d5e514"></a>The spath script</h3></div></div></div><p>This script does not exist, but this section is a thought experiment that gives some
+        insight on the power of the SML concept.</p><p>Think of this as the reverse of the previous section: show.tcl was showing a file system
+        as an XML text tree; here we're going to manage an SML or XML text tree as a file
+        system.</p><p>I had made another script called <a class="link" href="https://github.com/JFLarvoire/SysToolsLib/blob/master/Tcl/xpath.tcl" target="_top">xpath.tcl</a>, which makes it easy to use XPATH to view the contents of XML files, or
+        extract data from them. This script does nothing fancy. All it does is to pretend the XML
+        file represents a file system, and allow accessing its contents using Unix-style commands
+        like cat or ls. XML elements are considered as directories, and attributes as files. The
+        content data for a terminal element is considered as an unnamed file. Examples:</p><p>
+        <code class="code">xpath sites.kml ls /kml/Folder/Folder</code></p><p>lists all inner elements as directories, and attributes as files.</p><p>
+        <code class="code">xpath sites.kml cat /kml/Folder/Folder/name</code></p><p>Displays attribute values, or the text content for elements. Here it outputs
+        "Drome".</p><p>The idea here is to write an spath.tcl script that does the same for SML data instead of
+        XML.</p><p>Supporting all features of XPATH would be difficult, as xpath.tcl uses Tcl's TclDOM
+        package to do the real work with XPATH transforms. But in the short term, it's possible to
+        get the same functionality using a one-line spath shell script:</p><p>
+        <code class="code">sml | xpath %*</code> (%* for Windows cmd, or $* for Unix bash)</p><p>1) This example shows the power of having a data format that is equivalent to
+        XML.</p><p>2) Notice how this works nicely with the output of the show.tcl script above
+          <span class="emphasis"><em>running in simplified mode</em></span>: show.tcl captures the contents of a real
+        file system, where files are normally displayed with the <code class="code">cat PATHNAME</code> command.
+        Then spath allows extracting the contents of individual files from that SML file using
+          <code class="code">spath cat PATHNAME</code>. The <code class="literal">PATHNAME</code> is the same. Gotcha:
+        Unfortunately this does not work with file names that are not XML tag compliant, for example
+        if they contain spaces, or begin with a digit, etc. A possible addition to XML 2.0 maybe?
+        &#9786;</p></div></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="d5e536"></a>Next Steps</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>Call to action: Download the tools, and try with them with your XML data. Please send
+          me (with [SML] in the email subject) feedback about the SML syntax, and the possible
+          alternatives. Is there any error or inconsistency that remains, preventing full XML
+          compatibility in some case? And please report any problem with the tools themselves as
+          issues in their respective GitHub area.</p></li><li class="listitem"><p>Continue work to improve SML parsing and generation as an option to the libxml2
+          library, or any other similar XML management library. Anybody interested in
+          participating?</p></li><li class="listitem"><p>If interest grows, work with interested people to freeze a standard.</p></li><li class="listitem"><p>Any project which stores data as XML files, even zipped like in MS Office, will save
+          space and increase ease of use by using the SML format instead. What about yours?</p></li><li class="listitem"><p>The savings potential is even better in XML-based network protocols, such as SOAP.
+          Adapting existing XML-based protocols to use SML instead is easy, and will significantly
+          increase bandwidth. Creating new ad hoc SML-based protocols would be easy too, and packet
+          analysis would be much easier!</p></li><li class="listitem"><p>Any new project which does not know what data format to use, could get an easy-to-use
+          format by adopting this SML format, while ensuring compatibility with XML-compatible-only
+          tools, should the need arise. </p></li></ul></div></div><div class="bibliography"><div class="titlepage"><div><div><h2 class="title"><a name="references"></a>Bibliography</h2></div></div></div><div class="bibliomixed"><a name="d5e552"></a><p class="bibliomixed">[<abbr class="abbrev">ASN.1 XER</abbr>] 
+       ITU <span class="title">XML encoding rules (XER) for ASN.1</span>:
+          <span class="bibliomisc"><a class="link" href="http://asn1.elibel.tm.fr/xml/xer.htm" target="_top">http://asn1.elibel.tm.fr/xml/xer.htm</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e557"></a><p class="bibliomixed">[<abbr class="abbrev">COMPARISON</abbr>] 
+       Wikipedia <span class="title">Comparison of data serialization formats</span>:
+          <span class="bibliomisc"><a class="link" href="https://en.wikipedia.org/wiki/Comparison_of_data_serialization_formats" target="_top">https://en.wikipedia.org/wiki/Comparison_of_data_serialization_formats</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e562"></a><p class="bibliomixed">[<abbr class="abbrev">EXI</abbr>] 
+       W3C <span class="title">Efficient XML Interchange (EXI) Format 1.0</span>
+      specification: <span class="bibliomisc"><a class="link" href="https://www.w3.org/TR/2014/REC-exi-20140211" target="_top">https://www.w3.org/TR/2014/REC-exi-20140211</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e567"></a><p class="bibliomixed">[<abbr class="abbrev">JSON</abbr>] 
+      <span class="title">Introducing JSON</span> (JavaScript Object Notation): <span class="bibliomisc"><a class="link" href="https://www.json.org/" target="_top">https://www.json.org/</a></span>, and ECMA <span class="title">The JSON Data Interchange
+        Syntax</span>: <span class="bibliomisc"><a class="link" href="http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf" target="_top">http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e575"></a><p class="bibliomixed">[<abbr class="abbrev">libxml2+SML</abbr>] 
+       J.F. Larvoire <span class="title">libxml2 fork supporting SML</span> XML&#8596;SML
+      conversion script: <span class="bibliomisc"><a class="link" href="https://github.com/JFLarvoire/libxml2" target="_top">https://github.com/JFLarvoire/libxml2</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e580"></a><p class="bibliomixed">[<abbr class="abbrev">mark</abbr>] 
+       Henry Luo <span class="title">{mark}</span> presentation: <span class="bibliomisc"><a class="link" href="https://mark.js.org/" target="_top">https://mark.js.org/</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e585"></a><p class="bibliomixed">[<abbr class="abbrev">MicroXML</abbr>] 
+       W3C <span class="title">MicroXML Community Group</span>: <span class="bibliomisc"><a class="link" href="https://www.w3.org/community/microxml/" target="_top">https://www.w3.org/community/microxml/</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e590"></a><p class="bibliomixed">[<abbr class="abbrev">Protocol Buffers</abbr>] 
+       Google <span class="title">Protocol Buffers</span>: <span class="bibliomisc"><a class="link" href="https://developers.google.com/protocol-buffers/" target="_top">https://developers.google.com/protocol-buffers/</a></span>, and Google Open
+      Source Blog: <span class="bibliomisc"><a class="link" href="http://google-opensource.blogspot.fr/2008/07/protocol-buffers-googles-data.html" target="_top">http://google-opensource.blogspot.fr/2008/07/protocol-buffers-googles-data.html</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e597"></a><p class="bibliomixed">[<abbr class="abbrev">Simple XML</abbr>] 
+       W3C <span class="title">Simple XML</span>: <span class="bibliomisc"><a class="link" href="http://www.w3.org/XML/simple-XML.html" target="_top">http://www.w3.org/XML/simple-XML.html</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e602"></a><p class="bibliomixed">[<abbr class="abbrev">Simple XML#2</abbr>] 
+       Wikipedia <span class="title">Simple XML</span>: <span class="bibliomisc"><a class="link" href="http://en.wikipedia.org/wiki/Simple_XML" target="_top">http://en.wikipedia.org/wiki/Simple_XML</a></span> (Apparently unrelated to
+      the previous one, despite the link) </p></div><div class="bibliomixed"><a name="d5e607"></a><p class="bibliomixed">[<abbr class="abbrev">sml.tcl</abbr>] 
+       J.F. Larvoire <span class="title">sml.tcl</span> XML&#8596;SML conversion script:
+          <span class="bibliomisc"><a class="link" href="https://github.com/JFLarvoire/SysToolsLib/blob/master/Tcl/sml.tcl" target="_top">https://github.com/JFLarvoire/SysToolsLib/blob/master/Tcl/sml.tcl</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e612"></a><p class="bibliomixed">[<abbr class="abbrev">Tcl Wiki</abbr>] 
+       Tcl wiki <span class="title">XML links page</span>: <span class="bibliomisc"><a class="link" href="http://wiki.tcl.tk/1740" target="_top">http://wiki.tcl.tk/1740</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e617"></a><p class="bibliomixed">[<abbr class="abbrev">TDL</abbr>] 
+       Tcl wiki - Lars Hellstr&ouml;m <span class="title">TDL proposal</span>: <span class="bibliomisc"><a class="link" href="http://wiki.tcl.tk/25681" target="_top">http://wiki.tcl.tk/25681</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e622"></a><p class="bibliomixed">[<abbr class="abbrev">WBXML</abbr>] 
+       Open Mobile Alliance WBXML - Wireless<span class="title">Binary XML Content Format
+        Specification</span>: <span class="bibliomisc"><a class="link" href="http://www.openmobilealliance.org/tech/affiliates/wap/wap-192-wbxml-20010725-a.pdf" target="_top">http://www.openmobilealliance.org/tech/affiliates/wap/wap-192-wbxml-20010725-a.pdf</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e627"></a><p class="bibliomixed">[<abbr class="abbrev">XML</abbr>] 
+       W3C <span class="title">Extensible Markup Language (XML) 1.0</span> specification:
+          <span class="bibliomisc"><a class="link" href="http://www.w3.org/TR/xml/" target="_top">http://www.w3.org/TR/xml/</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e632"></a><p class="bibliomixed">[<abbr class="abbrev">XML alternatives</abbr>] 
+       Paul T <span class="title">A list of XML alternatives proposals</span>:
+          <span class="bibliomisc"><a class="link" href="http://www.pault.com/xmlalternatives.html" target="_top">http://www.pault.com/xmlalternatives.html</a></span> (Dead
+      link), and <span class="title">On Data Languages</span>: <span class="bibliomisc"><a class="link" href="http://www.pault.com/data-languages.html" target="_top">http://www.pault.com/data-languages.html</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e640"></a><p class="bibliomixed">[<abbr class="abbrev">XML compression</abbr>] 
+       James Cheney <span class="title">XML compression bibliography</span>:
+          <span class="bibliomisc"><a class="link" href="http://xmlppm.sourceforge.net/paper/node9.html" target="_top">http://xmlppm.sourceforge.net/paper/node9.html</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e645"></a><p class="bibliomixed">[<abbr class="abbrev">XML PPM</abbr>] 
+       James Cheney <span class="title">Compressing XML with Multiplexed Hierarchical PPM
+        Models</span>: <span class="bibliomisc"><a class="link" href="http://xmlppm.sourceforge.net/paper/paper.html" target="_top">http://xmlppm.sourceforge.net/paper/paper.html</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e650"></a><p class="bibliomixed">[<abbr class="abbrev">xml-to-json</abbr>] 
+       W3C XSLT <span class="title">xml-to-json</span> function: <span class="bibliomisc"><a class="link" href="https://www.w3.org/TR/xslt-30/#func-xml-to-json" target="_top">https://www.w3.org/TR/xslt-30/#func-xml-to-json</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e655"></a><p class="bibliomixed">[<abbr class="abbrev">xmlgen</abbr>] 
+       Tcl wiki <span class="title">xmlgen</span> presentation: <span class="bibliomisc"><a class="link" href="http://wiki.tcl.tk/5976?redir=3210" target="_top">http://wiki.tcl.tk/5976?redir=3210</a></span>
+    </p></div><div class="bibliomixed"><a name="d5e660"></a><p class="bibliomixed">[<abbr class="abbrev">YAML</abbr>] 
+       yaml.org <span class="title">YAML Ain't Markup Language</span>: <span class="bibliomisc"><a class="link" href="http://yaml.org/" target="_top">http://yaml.org/</a></span>
+    </p></div></div></div></body></html>

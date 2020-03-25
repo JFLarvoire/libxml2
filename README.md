@@ -1,16 +1,20 @@
 ﻿This is a fork of the...
+========================
 
 XML toolkit from the GNOME project
 ==================================
 
-... adding experimental support for parsing and generating SML.
+... adding experimental support for parsing and generating SML
+==============================================================
 
-For information about SML, standing for "Simplified XML", see page 137 of:  
-http://archive.xmlprague.cz/2018/files/xmlprague-2018-proceedings.pdf
+For information about SML, standing for "Simplified XML", see the presentation page 137 of:  
+http://archive.xmlprague.cz/2018/files/xmlprague-2018-proceedings.pdf  
+A slightly updated version of the same SML presentation is online here:  
+[https://github.com/JFLarvoire/libxml2/blob/master/SML_presentation.htm](https://htmlpreview.github.io/?https://github.com/JFLarvoire/libxml2/blob/master/SML_presentation.htm)
 
 
-Changes in the library
-----------------------
+Changes for SML support in the libxml2 library
+----------------------------------------------
 
 This version of libxml2 can parse both XML and SML, and save either kind.
 
@@ -85,11 +89,11 @@ progress, and see when things start to go wrong.
 For details about these macros, see:
 https://github.com/JFLarvoire/SysToolsLib/blob/master/C/include/debugm.h
 and
-https://github.com/JFLarvoire/SysToolsLib/blob/master/Docs/System%20Script%20Libraries%20Description.htm
+[https://github.com/JFLarvoire/SysToolsLib/blob/master/Docs/System Script Libraries Description.htm](https://htmlpreview.github.io/?https://github.com/JFLarvoire/SysToolsLib/blob/master/Docs/System%20Script%20Libraries%20Description.htm)
     
 -------------------------------------------------------------------------------
 
-Original README contents:
+Original libxml2 README contents:
 
 Full documentation for the standard version of libxml2 is available on-line at  
 
