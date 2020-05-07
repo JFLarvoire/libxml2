@@ -13,9 +13,11 @@
  *  2020-03-09 JFL Pass head spaces through unchanged.
  *		   Fixed the parsing of the - special arguments.
  *  2020-03-10 JFL Minor update to yesterday's head spaces change.
+ *  2020-05-07 JFL Renamed option -w as -ow.
+ *                 Added options -oh and -oxh.
  */
 
-#define VERSION "2020-03-10"
+#define VERSION "2020-05-07"
 
 #include <stdio.h>
 #include <string.h>
@@ -59,6 +61,7 @@ DEBUG_CODE("\
   -is       Input is SML. Default: Autodetect the ML type\n\
   -ix       Input is XML. Default: Autodetect the ML type\n\
   -os       Output SML. Default if the input is XML\n\
+  -ow       Output non-significant white spaces\n\
   -ox       Output XML. Default if the input is SML\n\
   -pb       Parse keeping blank nodes (Default)\n\
   -pB       Parse removing blank nodes\n\
@@ -73,7 +76,6 @@ DEBUG_CODE("\
   -s        Input & output SML. Default: Input one kind & output the other\n\
   -t        Trim text nodes\n\
   -x        Input & output XML. Default: Input one kind & output the other\n\
-  -w        Output non-significant white spaces\n\
 \n\
 Filenames: Default or \"-\": Use stdin and stdout respectively\n\
 "
@@ -151,14 +153,26 @@ int main(int argc, char *argv[]) {
       	iParseOpts &= ~XML_PARSE_SML;
       	continue;
       }
+      if (!strcmp(opt, "oh")) {
+      	iSaveOpts |= XML_SAVE_AS_HTML;
+      	continue;
+      }
       if (!strcmp(opt, "os")) {
       	iSaveOpts |= XML_SAVE_AS_SML;
 	iOutMLTypeSet = 1;
       	continue;
       }
+      if (!strcmp(opt, "ow")) {
+      	iSaveOpts |= XML_SAVE_WSNONSIG;
+      	continue;
+      }
       if (!strcmp(opt, "ox")) {
       	iSaveOpts &= ~XML_SAVE_AS_SML;
 	iOutMLTypeSet = 1;
+      	continue;
+      }
+      if (!strcmp(opt, "oxh")) {
+      	iSaveOpts |= XML_SAVE_XHTML;
       	continue;
       }
       if (!strcmp(opt, "pb")) {
@@ -190,6 +204,8 @@ int main(int argc, char *argv[]) {
       	continue;
       }
       if (!strcmp(opt, "pN")) {
+      	// Note: This does expand user-defined entities, but the 5 standard XML entities
+      	//       (&lt; &gt; &amp; &quot; &apos;) will be changed back in the output.
       	iParseOpts |= XML_PARSE_NOENT;
       	continue;
       }
@@ -220,10 +236,6 @@ int main(int argc, char *argv[]) {
       	printf(" ; libxml2 version " LIBXML_DOTTED_VERSION);
         printf("\n");
       	exit(0);
-      }
-      if (!strcmp(opt, "w")) {
-      	iSaveOpts |= XML_SAVE_WSNONSIG;
-      	continue;
       }
       if (!strcmp(opt, "x")) {
       	iParseOpts &= ~XML_PARSE_DETECT_ML;
