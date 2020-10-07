@@ -15,13 +15,15 @@
  *  2020-03-10 JFL Minor update to yesterday's head spaces change.
  *  2020-05-07 JFL Renamed option -w as -ow.
  *                 Added options -oh and -oxh.
+ *  2020-10-07 JFL Report parser errors on stderr.
  */
 
-#define VERSION "2020-05-07"
+#define VERSION "2020-10-07"
 
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+// #include <stdarg.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <libxml/encoding.h>
@@ -39,6 +41,21 @@ int GetProgramNames(char *argv0);	/* Initialize the above two */
 int usage(void);
 int xmlRemoveBlankNodes(xmlNodePtr n);
 int xmlTrimTextNodes(xmlNodePtr n);
+
+// void myXmlGenericErrorFunc(void *pUserData, const char *pszFormat, ...) {
+//   va_list vl;
+//   fprintf(stderr, "Error: ");
+//   va_start(vl, pszFormat);
+//   vfprintf(stderr, pszFormat, vl);
+//   va_end(vl);
+// }
+
+/* Report parser errors on stderr */
+void myXmlStructuredErrorFunc(void *pUserData, xmlErrorPtr e) {
+  int *pnParserErrors = pUserData;
+  if (pnParserErrors) *pnParserErrors += 1;
+  fprintf(stderr, "Error at line %d column %d: %s", e->line, e->int2, e->message);
+}
 
 int usage() {
   printf("\n\
@@ -102,6 +119,7 @@ int main(int argc, char *argv[]) {
   FILE *hIn, *hOut;
   char *pszHeadSpaces = NULL;
   int nHeadSpaces = 0;
+  int nParserErrors = 0;
 
   /* Extract the program names from argv[0] */
   GetProgramNames(argv[0]);
@@ -298,9 +316,18 @@ int main(int argc, char *argv[]) {
   }
 
   /* Parse the ML input */
+  // xmlSetGenericErrorFunc(NULL, myXmlGenericErrorFunc); // Commented-out as this does not seem to report anything
+  xmlSetStructuredErrorFunc(&nParserErrors, myXmlStructuredErrorFunc); // Report every parsing error
   doc = xmlReadFile(infilename, NULL, iParseOpts);
   if (doc == NULL) {
-    fprintf(stderr, "Failed to parse ML in \"%s\"\n", infilename);
+    // xmlErrorPtr error = xmlGetLastError();
+    // fprintf(stderr, "Failed to parse \"%s\" at line %d column %d: %s\n",
+    //         infilename, error->line, error->int2, error->message);
+    if (nParserErrors) {
+      fprintf(stderr, "%d errors found parsing \"%s\"\n", nParserErrors, infilename);
+    } else { /* Not sure this can happen, but just in case */
+      fprintf(stderr, "Failed to parse \"%s\"\n", infilename);
+    }
     return 1;
   }
   DEBUG_PRINTF(("# Parsed ML successfully\n"));
