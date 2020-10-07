@@ -15,7 +15,7 @@ unrelated to SML.
 In the simplest case of a default build with Microsoft tools, it becomes exactly the same
 as the Unix process:
 
-    configure & make & make install
+    configure && make && make install
 
 For that, I've added two batch scripts to help build with Unix-like commands:  
 
