@@ -16,6 +16,8 @@
  *  2020-05-07 JFL Renamed option -w as -ow.
  *                 Added options -oh and -oxh.
  *  2020-10-07 JFL Report parser errors on stderr.
+ *                 Added option -ih to parse HTML.
+ *                 Added options -pr and -pR to control the relaxed parsing.
  */
 
 #define VERSION "2020-10-07"
@@ -29,6 +31,7 @@
 #include <libxml/encoding.h>
 #include <libxml/xmlsave.h>
 #include <libxml/xmlversion.h>
+#include <libxml/HTMLparser.h>
 
 #include <debugm.h> /* SysToolsLib debug macros */
 
@@ -75,9 +78,10 @@ DEBUG_CODE("\
   -D        Output no ?xml declaration. Default: Same as in input\n\
   -E        Output no empty tags\n\
   -f        Format and indent the output. Default: Same as the input\n\
-  -is       Input is SML. Default: Autodetect the ML type\n\
-  -ix       Input is XML. Default: Autodetect the ML type\n\
-  -os       Output SML. Default if the input is XML\n\
+  -ih       Input is HTML. (Not autodetected) (Reports invalid XHTML)\n\
+  -is       Input is SML. Default: Autodetect if XML or SML\n\
+  -ix       Input is XML. Default: Autodetect if XML or SML\n\
+  -os       Output SML. Default if the input is XML or HTML\n\
   -ow       Output non-significant white spaces\n\
   -ox       Output XML. Default if the input is SML\n\
   -pb       Parse keeping blank nodes (Default)\n\
@@ -88,6 +92,8 @@ DEBUG_CODE("\
   -pH       Parse without using the huge file option (Default)\n\
   -pn       Parse keeping entity nodes (i.e. not expanding entities) (Default)\n\
   -pN       Parse removing entity nodes (i.e. expanding entities)\n\
+  -pr       Relaxed parsing, recovering from minor errors\n\
+  -pR       Standard parsing, not recovering from errors (Default)\n\
   -pw       Parse reporting warnings\n\
   -pW       Parse ignoring warnings (Default)\n\
   -s        Input & output SML. Default: Input one kind & output the other\n\
@@ -110,7 +116,7 @@ int main(int argc, char *argv[]) {
   const char * outfilename = NULL;
   /* const char * encoding = "ISO-8859-1"; */
   int iSaveOpts = 0;
-  int iParseOpts = XML_PARSE_DETECT_ML | XML_PARSE_NOERROR | XML_PARSE_NOWARNING;
+  int iParseOpts = XML_PARSE_DETECT_ML | XML_PARSE_NOERROR | XML_PARSE_NOWARNING | HTML_PARSE_NONET;
   int iOutMLTypeSet = 0; /* 1 = Output markup type specified */
   int iXmlDeclSet = 0; /* 1 = Whether to output the ?xml declaration specified */
   xmlSaveCtxtPtr ctxt;
@@ -120,6 +126,7 @@ int main(int argc, char *argv[]) {
   char *pszHeadSpaces = NULL;
   int nHeadSpaces = 0;
   int nParserErrors = 0;
+  int iParseHtml = 0;
 
   /* Extract the program names from argv[0] */
   GetProgramNames(argv[0]);
@@ -161,12 +168,22 @@ int main(int argc, char *argv[]) {
       	iDeleteBlankNodes = 1; /* Do it manually instead */
       	continue;
       }
+      if (!strcmp(opt, "ih")) {
+      	int iParseHtml = 1;
+      	iParseOpts &= ~XML_PARSE_DETECT_ML;
+      	iParseOpts &= ~XML_PARSE_SML;
+      	iParseOpts |= HTML_PARSE_RECOVER; /* Accept HTML that's not valid XHTML */
+      	iParseOpts |= HTML_PARSE_NOIMPLIED;
+      	continue;
+      }
       if (!strcmp(opt, "is")) {
+      	int iParseHtml = 0;
       	iParseOpts &= ~XML_PARSE_DETECT_ML;
       	iParseOpts |= XML_PARSE_SML;
       	continue;
       }
       if (!strcmp(opt, "ix")) {
+      	int iParseHtml = 0;
       	iParseOpts &= ~XML_PARSE_DETECT_ML;
       	iParseOpts &= ~XML_PARSE_SML;
       	continue;
@@ -225,6 +242,14 @@ int main(int argc, char *argv[]) {
       	// Note: This does expand user-defined entities, but the 5 standard XML entities
       	//       (&lt; &gt; &amp; &quot; &apos;) will be changed back in the output.
       	iParseOpts |= XML_PARSE_NOENT;
+      	continue;
+      }
+      if (!strcmp(opt, "pR")) {
+      	iParseOpts &= ~XML_PARSE_RECOVER;
+      	continue;
+      }
+      if (!strcmp(opt, "pr")) {
+      	iParseOpts |= XML_PARSE_RECOVER;
       	continue;
       }
       if (!strcmp(opt, "pw")) {
@@ -318,7 +343,11 @@ int main(int argc, char *argv[]) {
   /* Parse the ML input */
   // xmlSetGenericErrorFunc(NULL, myXmlGenericErrorFunc); // Commented-out as this does not seem to report anything
   xmlSetStructuredErrorFunc(&nParserErrors, myXmlStructuredErrorFunc); // Report every parsing error
-  doc = xmlReadFile(infilename, NULL, iParseOpts);
+  if (iParseHtml) {
+    doc = htmlReadFile(infilename, NULL, iParseOpts); // This still reports invalid XHTML
+  } else {
+    doc = xmlReadFile(infilename, NULL, iParseOpts);
+  }
   if (doc == NULL) {
     // xmlErrorPtr error = xmlGetLastError();
     // fprintf(stderr, "Failed to parse \"%s\" at line %d column %d: %s\n",
