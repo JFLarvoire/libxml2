@@ -18,9 +18,10 @@
  *  2020-10-07 JFL Report parser errors on stderr.
  *                 Added option -ih to parse HTML.
  *                 Added options -pr and -pR to control the relaxed parsing.
+ *  2021-01-18 JFL Merged in significant library changes. No change in sml2.c.
  */
 
-#define VERSION "2020-10-07"
+#define VERSION "2021-01-18"
 
 #include <stdio.h>
 #include <string.h>

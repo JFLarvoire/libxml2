@@ -80,13 +80,13 @@ CONTENTS
    1.3 Compiling  
    1.4 Installing  
 
-2. Compiler Specifics  
-   2.1 Microsoft Visual C/C++  
-   2.1 GNU C/C++, Mingw Edition  
-   2.2 Borland C++ Builder  
-      2.2.1 Building with iconv support  
-      2.2.2 Compatability problems with MSVC (and probably CYGWIN)  
-      2.2.3 Other caveats  
+2. Compiler Specifics
+   2.1 Microsoft Visual C/C++
+   2.1 GNU C/C++, Mingw Edition
+   2.2 Borland C++ Builder
+      2.2.1 Building with iconv support
+      2.2.2 Compatibility problems with MSVC (and probably CYGWIN)
+      2.2.3 Other caveats
 
 
 

@@ -165,9 +165,9 @@ function usage()
 	txt += "              installed (" + buildLibPrefix + ")\n";
 	txt += "  sodir:      Directory where shared libraries should be installed\n"; 
 	txt += "              (" + buildSoPrefix + ")\n";
-	txt += "  include:    Additional search path for the compiler, particularily\n";
+	txt += "  include:    Additional search path for the compiler, particularly\n";
 	txt += "              where iconv headers can be found (" + buildInclude + ")\n";
-	txt += "  lib:        Additional search path for the linker, particularily\n";
+	txt += "  lib:        Additional search path for the linker, particularly\n";
 	txt += "              where iconv library can be found (" + buildLib + ")\n";
 	WScript.Echo(txt);
 }
@@ -208,15 +208,15 @@ function discoverVersion()
 	while (cf.AtEndOfStream != true) {
 		ln = cf.ReadLine();
 		s = new String(ln);
-		if (s.search(/^LIBXML_MAJOR_VERSION=/) != -1) {
-			vf.WriteLine(s);
-			verMajor = s.substring(s.indexOf("=") + 1, s.length);
-		} else if(s.search(/^LIBXML_MINOR_VERSION=/) != -1) {
-			vf.WriteLine(s);
-			verMinor = s.substring(s.indexOf("=") + 1, s.length);
-		} else if(s.search(/^LIBXML_MICRO_VERSION=/) != -1) {
-			vf.WriteLine(s);
-			verMicro = s.substring(s.indexOf("=") + 1, s.length);
+		if (m = s.match(/^m4_define\(\[MAJOR_VERSION\], (\w+)\)/)) {
+			vf.WriteLine("LIBXML_MAJOR_VERSION=" + m[1]);
+			verMajor = m[1];
+		} else if(m = s.match(/^m4_define\(\[MINOR_VERSION\], (\w+)\)/)) {
+			vf.WriteLine("LIBXML_MINOR_VERSION=" + m[1]);
+			verMinor = m[1];
+		} else if(m = s.match(/^m4_define\(\[MICRO_VERSION\], (\w+)\)/)) {
+			vf.WriteLine("LIBXML_MICRO_VERSION=" + m[1]);
+			verMicro = m[1];
 		} else if(s.search(/^LIBXML_MICRO_VERSION_SUFFIX=/) != -1) {
 			vf.WriteLine(s);
 			verMicroSuffix = s.substring(s.indexOf("=") + 1, s.length);
@@ -430,7 +430,7 @@ function genReadme(bname, ver, file)
 	f.WriteLine("platform.");
 	f.WriteBlankLines(1);
 	f.WriteLine("  The files in this package do not require any special installation");
-	f.WriteLine("steps. Extract the contents of the archive whereever you wish and");
+	f.WriteLine("steps. Extract the contents of the archive wherever you wish and");
 	f.WriteLine("make sure that your tools which use " + bname + " can find it.");
 	f.WriteBlankLines(1);
 	f.WriteLine("  For example, if you want to run the supplied utilities from the command");
