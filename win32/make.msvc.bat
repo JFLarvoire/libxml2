@@ -12,6 +12,7 @@
 :#   2021-01-17 JFL Added command-line options parsing.                       *
 :#                  Save the last build in a bin\WIN32 or bin\WIN64 subdir.   *
 :#   2021-01-19 JFL Factored-out routine :GetLastFileTime.                    *
+:#                  Optionally use MAKE_OPTS in configure.default.bat         *
 :#                                                                            *
 :#*****************************************************************************
 
@@ -75,8 +76,13 @@ if not defined VCINSTALLDIR (
 :# Remember what the newest output file was in bin.msvc
 call :GetLastFileTime bin.msvc PREVIOUS_LAST
 
+:# Build the nmake options
+if defined ARGS set ARGS=%ARGS:~1%
+set MAKE_OPTS=%ARGS%
+if not defined MAKE_OPTS if exist configure.default.bat call configure.default.bat
+
 :# Run nmake
-%EXEC% nmake%ARGS%
+%EXEC% nmake %MAKE_OPTS%
 if errorlevel 1 exit /b                         &:# Exit if nmake failed
 
 :# Check if anything has been updated in bin.msvc
